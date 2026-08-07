@@ -1,5 +1,5 @@
 const std = @import("std");
-const constants = @import("./consants.zig");
+const constants = @import("./constants.zig");
 
 const Suspense = @import("./Suspense.zig");
 
@@ -141,9 +141,7 @@ pub fn Ymlz(comptime Destination: type) type {
             }
         }
 
-        fn isComment(self: *Self, line: []const u8) bool {
-            _ = self;
-
+        fn isComment(line: []const u8) bool {
             for (line) |char| {
                 if (char == '#') {
                     return true;
@@ -354,7 +352,7 @@ pub fn Ymlz(comptime Destination: type) type {
 
             if (raw_line) |line| {
                 // TODO: What shoud really happen if a file has '---' which means a new document in the same file.
-                if (self.isComment(line) or std.mem.eql(u8, "---", line)) {
+                if (isComment(line) or std.mem.eql(u8, "---", line)) {
                     // Skipping comments
                     return self.readLine();
                 }
