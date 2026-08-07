@@ -27,7 +27,7 @@ pub fn Ymlz(comptime Destination: type) type {
 
         const Self = @This();
 
-        const InternalRawContenxt = struct { current_index: usize = 0, buf: []const u8 };
+        const InternalRawContext = struct { current_index: usize = 0, buf: []const u8 };
 
         pub fn init(allocator: Allocator) !Self {
             return .{
@@ -66,13 +66,13 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         pub fn loadRaw(self: *Self, raw: []const u8) !Destination {
-            const context: InternalRawContenxt = .{ .buf = raw };
+            const context: InternalRawContext = .{ .buf = raw };
             const any_reader: AnyReader = .{ .context = &context, .readFn = rawRead };
             return self.loadReader(any_reader);
         }
 
         fn rawRead(context: *const anyopaque, buf: []u8) anyerror!usize {
-            var internal_raw_context: *InternalRawContenxt = @ptrCast(@alignCast(@constCast(context)));
+            var internal_raw_context: *InternalRawContext = @ptrCast(@alignCast(@constCast(context)));
             const source = internal_raw_context.buf[internal_raw_context.current_index..];
             const len = @min(buf.len, source.len);
             @memcpy(buf[0..len], source[0..len]);
@@ -973,10 +973,7 @@ test "should handle optional for new array index" {
             extra_information: ?[]const u8,
         },
     };
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
-        "./resources/optional_array.yml"
-    );
+    const yml_file_location = try std.fs.cwd().realpathAlloc(std.testing.allocator, "./resources/optional_array.yml");
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
