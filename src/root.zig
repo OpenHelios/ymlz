@@ -266,10 +266,10 @@ pub fn Ymlz(comptime Destination: type) type {
                     @field(destination, field.name) = try parseBooleanExpression(raw_line, depth);
                 },
                 .int => {
-                    @field(destination, field.name) = try self.parseNumericExpression(field.type, raw_line, depth);
+                    @field(destination, field.name) = try parseNumericExpression(field.type, raw_line, depth);
                 },
                 .float => {
-                    @field(destination, field.name) = try self.parseNumericExpression(field.type, raw_line, depth);
+                    @field(destination, field.name) = try parseNumericExpression(field.type, raw_line, depth);
                 },
                 .pointer => {
                     if (actual_type_info.pointer.size == .slice and actual_type_info.pointer.child == u8) {
@@ -522,8 +522,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return error.NotBoolean;
         }
 
-        fn parseNumericExpression(self: *Self, comptime T: type, raw_line: []const u8, depth: usize) !T {
-            _ = self;
+        fn parseNumericExpression(comptime T: type, raw_line: []const u8, depth: usize) !T {
             const expression = try parseSimpleExpression(raw_line, depth, false);
             const value = getExpressionValueWithTrim(expression);
 
