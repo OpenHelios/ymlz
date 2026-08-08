@@ -263,7 +263,7 @@ pub fn Ymlz(comptime Destination: type) type {
         ) !void {
             switch (actual_type_info) {
                 .bool => {
-                    @field(destination, field.name) = try self.parseBooleanExpression(raw_line, depth);
+                    @field(destination, field.name) = try parseBooleanExpression(raw_line, depth);
                 },
                 .int => {
                     @field(destination, field.name) = try self.parseNumericExpression(field.type, raw_line, depth);
@@ -503,8 +503,7 @@ pub fn Ymlz(comptime Destination: type) type {
             }
         }
 
-        fn parseBooleanExpression(self: *Self, raw_line: []const u8, depth: usize) !bool {
-            _ = self;
+        fn parseBooleanExpression(raw_line: []const u8, depth: usize) !bool {
             const expression = try parseSimpleExpression(raw_line, depth, false);
             const value = getExpressionValueWithTrim(expression);
 
