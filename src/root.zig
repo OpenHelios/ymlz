@@ -383,8 +383,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return std.mem.eql(u8, trimmed_line, "-");
         }
 
-        fn isNewExpression(self: *Self, raw_value_line: []const u8, depth: usize) bool {
-            _ = self;
+        fn isNewExpression(raw_value_line: []const u8, depth: usize) bool {
             if (raw_value_line.len == 0) {
                 return false;
             }
@@ -407,7 +406,7 @@ pub fn Ymlz(comptime Destination: type) type {
             while (true) {
                 const raw_value_line = try self.readLine() orelse break;
 
-                if (self.isNewExpression(raw_value_line, depth)) {
+                if (isNewExpression(raw_value_line, depth)) {
                     try self.suspense.set(raw_value_line);
                     break;
                 }
@@ -434,7 +433,7 @@ pub fn Ymlz(comptime Destination: type) type {
 
                 try self.suspense.set(raw_value_line);
 
-                if (self.isNewExpression(raw_value_line, depth)) {
+                if (isNewExpression(raw_value_line, depth)) {
                     break;
                 }
 
@@ -470,7 +469,7 @@ pub fn Ymlz(comptime Destination: type) type {
             while (true) {
                 const raw_value_line = try self.readRawLine() orelse break;
 
-                if (self.isNewExpression(raw_value_line, depth)) {
+                if (isNewExpression(raw_value_line, depth)) {
                     try self.suspense.set(raw_value_line);
                     if (preserve_new_line)
                         _ = list.pop();
