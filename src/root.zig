@@ -446,7 +446,7 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn parseStringExpression(self: *Self, raw_line: []const u8, depth: usize, is_multiline: bool) ![]const u8 {
-            const expression = try self.parseSimpleExpression(raw_line, depth, is_multiline);
+            const expression = try parseSimpleExpression(raw_line, depth, is_multiline);
             const value = getExpressionValueWithTrim(expression);
 
             if (value.len == 0) return value;
@@ -476,7 +476,7 @@ pub fn Ymlz(comptime Destination: type) type {
                     break;
                 }
 
-                const expression = try self.parseSimpleExpression(raw_value_line, depth, true);
+                const expression = try parseSimpleExpression(raw_value_line, depth, true);
                 const value = getExpressionValue(expression);
 
                 try list.appendSlice(self.allocator, value);
@@ -504,7 +504,8 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn parseBooleanExpression(self: *Self, raw_line: []const u8, depth: usize) !bool {
-            const expression = try self.parseSimpleExpression(raw_line, depth, false);
+            _ = self;
+            const expression = try parseSimpleExpression(raw_line, depth, false);
             const value = getExpressionValueWithTrim(expression);
 
             const isBooleanTrue = std.mem.eql(u8, value, "True") or std.mem.eql(u8, value, "true") or std.mem.eql(u8, value, "On") or std.mem.eql(u8, value, "on");
@@ -523,7 +524,8 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn parseNumericExpression(self: *Self, comptime T: type, raw_line: []const u8, depth: usize) !T {
-            const expression = try self.parseSimpleExpression(raw_line, depth, false);
+            _ = self;
+            const expression = try parseSimpleExpression(raw_line, depth, false);
             const value = getExpressionValueWithTrim(expression);
 
             switch (@typeInfo(T)) {
@@ -547,8 +549,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return line;
         }
 
-        fn parseSimpleExpression(self: *Self, raw_line: []const u8, depth: usize, is_multiline: bool) !Expression {
-            _ = self;
+        fn parseSimpleExpression(raw_line: []const u8, depth: usize, is_multiline: bool) !Expression {
             const indent_depth = getIndentDepth(depth);
 
             if (raw_line.len < indent_depth) {
