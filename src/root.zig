@@ -291,8 +291,7 @@ pub fn Ymlz(comptime Destination: type) type {
             }
         }
 
-        fn isOptionalFieldExists(self: *Self, lookup_key: []const u8, raw_line: []const u8, depth: usize) !bool {
-            _ = self;
+        fn isOptionalFieldExists(lookup_key: []const u8, raw_line: []const u8, depth: usize) !bool {
             const indent_depth = getIndentDepth(depth);
             var split_iterator = std.mem.splitSequence(u8, raw_line[indent_depth..], ":");
             const key = split_iterator.next() orelse return false;
