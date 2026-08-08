@@ -155,8 +155,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return false;
         }
 
-        fn getIndentDepth(self: *Self, depth: usize) usize {
-            _ = self;
+        fn getIndentDepth(depth: usize) usize {
             return constants.INDENT_SIZE * depth;
         }
 
@@ -177,7 +176,8 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn getFieldName(self: *Self, raw_line: []const u8, depth: usize) ?[]const u8 {
-            const indent = self.getIndentDepth(depth);
+            _ = self;
+            const indent = getIndentDepth(depth);
             const line = raw_line[indent..];
             var splitted = std.mem.splitSequence(u8, line, ":");
             // when running on linux, what gets returned here for a non-zero indent is a value prefixed with a space
@@ -293,7 +293,8 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn isOptionalFieldExists(self: *Self, lookup_key: []const u8, raw_line: []const u8, depth: usize) !bool {
-            const indent_depth = self.getIndentDepth(depth);
+            _ = self;
+            const indent_depth = getIndentDepth(depth);
             var split_iterator = std.mem.splitSequence(u8, raw_line[indent_depth..], ":");
             const key = split_iterator.next() orelse return false;
             return std.mem.eql(u8, key, lookup_key);
@@ -385,11 +386,12 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn isNewExpression(self: *Self, raw_value_line: []const u8, depth: usize) bool {
+            _ = self;
             if (raw_value_line.len == 0) {
                 return false;
             }
 
-            const indent_depth = self.getIndentDepth(depth);
+            const indent_depth = getIndentDepth(depth);
 
             for (0..indent_depth) |d| {
                 if (raw_value_line[d] != ' ') {
@@ -553,7 +555,7 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn parseSimpleExpression(self: *Self, raw_line: []const u8, depth: usize, is_multiline: bool) !Expression {
-            const indent_depth = self.getIndentDepth(depth);
+            const indent_depth = getIndentDepth(depth);
 
             if (raw_line.len < indent_depth) {
                 return .{
