@@ -160,8 +160,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return constants.INDENT_SIZE * depth;
         }
 
-        fn printFieldWithIdent(self: *Self, depth: usize, field_name: []const u8, raw_line: []const u8) void {
-            _ = self;
+        fn printFieldWithIdent(depth: usize, field_name: []const u8, raw_line: []const u8) void {
             // std.debug.print("printFieldWithIdent:", .{});
             for (0..depth) |_| {
                 std.debug.print(" ", .{});
