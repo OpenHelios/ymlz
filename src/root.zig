@@ -539,9 +539,7 @@ pub fn Ymlz(comptime Destination: type) type {
             }
         }
 
-        fn withoutQuotes(self: *Self, line: []const u8) []const u8 {
-            _ = self;
-
+        fn withoutQuotes(line: []const u8) []const u8 {
             if ((line[0] == '\'' or line[0] == '"') and (line[line.len - 1] == '\'' or line[line.len - 1] == '"')) {
                 return line[1 .. line.len - 1];
             }
@@ -550,6 +548,7 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn parseSimpleExpression(self: *Self, raw_line: []const u8, depth: usize, is_multiline: bool) !Expression {
+            _ = self;
             const indent_depth = getIndentDepth(depth);
 
             if (raw_line.len < indent_depth) {
@@ -571,7 +570,7 @@ pub fn Ymlz(comptime Destination: type) type {
 
             if (line[0] == '-') {
                 return .{
-                    .value = .{ .Simple = self.withoutQuotes(line[2..]) },
+                    .value = .{ .Simple = withoutQuotes(line[2..]) },
                     .raw = raw_line,
                 };
             }
@@ -582,13 +581,13 @@ pub fn Ymlz(comptime Destination: type) type {
 
             const value = tokens_iterator.next() orelse {
                 return .{
-                    .value = .{ .Simple = self.withoutQuotes(line) },
+                    .value = .{ .Simple = withoutQuotes(line) },
                     .raw = raw_line,
                 };
             };
 
             return .{
-                .value = .{ .KV = .{ .key = key, .value = self.withoutQuotes(value) } },
+                .value = .{ .KV = .{ .key = key, .value = withoutQuotes(value) } },
                 .raw = raw_line,
             };
         }
