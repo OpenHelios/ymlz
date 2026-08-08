@@ -299,9 +299,7 @@ pub fn Ymlz(comptime Destination: type) type {
             return std.mem.eql(u8, key, lookup_key);
         }
 
-        fn ignoreComment(self: *Self, line: []const u8) []const u8 {
-            _ = self;
-
+        fn ignoreComment(line: []const u8) []const u8 {
             var comment_index: usize = 0;
 
             for (line, 0..line.len) |c, i| {
@@ -356,7 +354,7 @@ pub fn Ymlz(comptime Destination: type) type {
                     return self.readLine();
                 }
 
-                return self.ignoreComment(line);
+                return ignoreComment(line);
             }
 
             return null;
