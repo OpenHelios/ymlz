@@ -477,7 +477,7 @@ pub fn Ymlz(comptime Destination: type) type {
                 }
 
                 const expression = try self.parseSimpleExpression(raw_value_line, depth, true);
-                const value = self.getExpressionValue(expression);
+                const value = getExpressionValue(expression);
 
                 try list.appendSlice(self.allocator, value);
 
@@ -493,12 +493,11 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         fn getExpressionValueWithTrim(self: *Self, expression: Expression) []const u8 {
-            return std.mem.trim(u8, self.getExpressionValue(expression), " ");
+            _ = self;
+            return std.mem.trim(u8, getExpressionValue(expression), " ");
         }
 
-        fn getExpressionValue(self: *Self, expression: Expression) []const u8 {
-            _ = self;
-
+        fn getExpressionValue(expression: Expression) []const u8 {
             switch (expression.value) {
                 .Simple => return expression.value.Simple,
                 .KV => return expression.value.KV.value,
