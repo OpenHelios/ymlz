@@ -190,9 +190,19 @@ pub fn main() !void {
 
 ```
 
-### Parsing by providing a custom std.io.AnyReader
+### Parsing by providing a custom reader
 
-It's possible to pass your own implementation of the std.io.AnyReader interface to ymlz using `loadReader` which is used internally for both `loadFile` and `loadRaw`. See [internal implementation](https://github.com/pwbh/ymlz/blob/master/src/root.zig#L64) for reference.
+It's possible to pass your own implementation for the `readLine` function to ymlz using `loadReader` which is used internally for both `loadFile` and `loadRaw`. See [internal implementation](https://github.com/pwbh/ymlz/blob/master/src/root.zig#L64) for reference. An instance of a struct implementing
+the following function can be passed as reader:
+
+```Zig
+pub fn readLine(
+    self: *Self,
+    allocator: Allocator,
+) !?[]const u8 {
+    // ...
+}
+```
 
 ## Contribution
 

@@ -4,7 +4,6 @@ const constants = @import("constants.zig");
 const Suspense = @import("Suspense.zig");
 
 const Allocator = std.mem.Allocator;
-const AnyReader = std.io.AnyReader;
 
 const expect = std.testing.expect;
 
@@ -36,50 +35,48 @@ const FileReader = struct {
     const Self = @This();
 
     allocator: Allocator,
-    file: *std.fs.File,
-    any_reader: AnyReader,
+    file: std.fs.File,
+    buffer: []u8,
+    reader: std.fs.File.Reader,
 
-    pub fn init(
-        allocator: Allocator,
-        yml_path: []const u8,
-    ) !Self {
-        const file = try allocator.create(std.fs.File);
-        errdefer allocator.destroy(file);
-        file.* = try std.fs.openFileAbsolute(
-            yml_path,
-            .{ .mode = .read_only },
-        );
+    pub fn init(allocator: Allocator, yml_path: []const u8) !Self {
+        const file = try std.fs.openFileAbsolute(yml_path, .{ .mode = .read_only });
         errdefer file.close();
+        const buffer = try allocator.alloc(u8, 4096);
+        errdefer allocator.free(buffer);
         return .{
             .allocator = allocator,
             .file = file,
-            .any_reader = .{
-                .context = file,
-                .readFn = fileRead,
-            },
+            .buffer = buffer,
+            .reader = file.reader(buffer),
         };
     }
 
     pub fn deinit(self: *Self) void {
+        self.allocator.free(self.buffer);
         self.file.close();
-        self.allocator.destroy(self.file);
-    }
-
-    fn fileRead(context: *const anyopaque, buf: []u8) anyerror!usize {
-        const file: *std.fs.File = @ptrCast(@alignCast(@constCast(context)));
-        return std.fs.File.read(file.*, buf);
     }
 
     pub fn readLine(
-        self: *@This(),
-        allocator: Allocator,
+        self: *Self,
+        allocator: std.mem.Allocator,
     ) !?[]const u8 {
-        const raw_line = try self.any_reader.readUntilDelimiterOrEofAlloc(
-            allocator,
+        var line = std.io.Writer.Allocating.init(allocator);
+        defer line.deinit();
+        _ = self.reader.interface.streamDelimiter(
+            &line.writer,
             '\n',
-            constants.MAX_READ_SIZE,
-        );
-        return raw_line;
+        ) catch |err| switch (err) {
+            error.EndOfStream => {
+                if (line.written().len == 0)
+                    return null;
+                return try allocator.dupe(u8, line.written());
+            },
+            else => return err,
+        };
+        // consume '\n'
+        _ = try self.reader.interface.takeByte();
+        return try allocator.dupe(u8, line.written());
     }
 };
 
