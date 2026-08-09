@@ -35,10 +35,34 @@ const RawReader = struct {
 const FileReader = struct {
     const Self = @This();
 
+    allocator: Allocator,
+    file: *std.fs.File,
     any_reader: AnyReader,
 
-    pub fn init(file: *std.fs.File) FileReader {
-        return .{ .any_reader = .{ .context = file, .readFn = fileRead } };
+    pub fn init(
+        allocator: Allocator,
+        yml_path: []const u8,
+    ) !Self {
+        const file = try allocator.create(std.fs.File);
+        errdefer allocator.destroy(file);
+        file.* = try std.fs.openFileAbsolute(
+            yml_path,
+            .{ .mode = .read_only },
+        );
+        errdefer file.close();
+        return .{
+            .allocator = allocator,
+            .file = file,
+            .any_reader = .{
+                .context = file,
+                .readFn = fileRead,
+            },
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.file.close();
+        self.allocator.destroy(self.file);
     }
 
     fn fileRead(context: *const anyopaque, buf: []u8) anyerror!usize {
@@ -101,9 +125,8 @@ pub fn Ymlz(comptime Destination: type) type {
         /// such as `std.fs.cwd()` in order to create relative paths.
         /// See Github README for example.
         pub fn loadFile(self: *Self, yml_path: []const u8) !Destination {
-            var file = try std.fs.openFileAbsolute(yml_path, .{ .mode = .read_only });
-            defer file.close();
-            var reader: FileReader = .init(&file);
+            var reader: FileReader = try .init(self.allocator, yml_path);
+            defer reader.deinit();
             return self.loadReader(&reader);
         }
 
