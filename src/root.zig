@@ -5,6 +5,33 @@ const Suspense = @import("Suspense.zig");
 
 const Allocator = std.mem.Allocator;
 
+const compat = @import("compat/compat.zig");
+const isZig0_16 = compat.isZig0_16;
+const Dir = if (isZig0_16)
+    std.Io.Dir
+else
+    compat.Io.Dir;
+const File = if (isZig0_16)
+    std.Io.File
+else
+    std.fs.File;
+const Io = if (isZig0_16)
+    std.Io
+else
+    compat.Io;
+const Writer = if (isZig0_16)
+    std.Io.Writer
+else
+    std.io.Writer;
+const trimStart = if (isZig0_16)
+    std.mem.trimStart
+else
+    std.mem.trimLeft;
+const trimEnd = if (isZig0_16)
+    std.mem.trimEnd
+else
+    std.mem.trimRight;
+
 const expect = std.testing.expect;
 
 const RawReader = struct {
@@ -35,33 +62,46 @@ const FileReader = struct {
     const Self = @This();
 
     allocator: Allocator,
-    file: std.fs.File,
+    io: Io,
+    file: File,
     buffer: []u8,
-    reader: std.fs.File.Reader,
+    reader: File.Reader,
 
-    pub fn init(allocator: Allocator, yml_path: []const u8) !Self {
-        const file = try std.fs.openFileAbsolute(yml_path, .{ .mode = .read_only });
-        errdefer file.close();
+    pub fn init(allocator: Allocator, io: Io, yml_path: []const u8) !Self {
+        const file = try Dir.openFileAbsolute(io, yml_path, .{ .mode = .read_only });
+        if (isZig0_16) {
+            errdefer file.close(io);
+        } else {
+            errdefer file.close();
+        }
         const buffer = try allocator.alloc(u8, 4096);
         errdefer allocator.free(buffer);
         return .{
             .allocator = allocator,
+            .io = io,
             .file = file,
             .buffer = buffer,
-            .reader = file.reader(buffer),
+            .reader = if (isZig0_16)
+                file.reader(io, buffer)
+            else
+                file.reader(buffer),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.allocator.free(self.buffer);
-        self.file.close();
+        if (isZig0_16) {
+            self.file.close(self.io);
+        } else {
+            self.file.close();
+        }
     }
 
     pub fn readLine(
         self: *Self,
         allocator: std.mem.Allocator,
     ) !?[]const u8 {
-        var line = std.io.Writer.Allocating.init(allocator);
+        var line = Writer.Allocating.init(allocator);
         defer line.deinit();
         _ = self.reader.interface.streamDelimiter(
             &line.writer,
@@ -119,12 +159,21 @@ pub fn Ymlz(comptime Destination: type) type {
         }
 
         /// Uses absolute path for the yml file path. Can be used in conjunction
-        /// such as `std.fs.cwd()` in order to create relative paths.
+        /// such as `std.io.Dir.cwd()` in order to create relative paths.
         /// See Github README for example.
         pub fn loadFile(self: *Self, yml_path: []const u8) !Destination {
-            var reader: FileReader = try .init(self.allocator, yml_path);
-            defer reader.deinit();
-            return self.loadReader(&reader);
+            if (isZig0_16) {
+                var threaded: std.Io.Threaded = .init_single_threaded;
+                const io = threaded.io();
+                var reader: FileReader = try .init(self.allocator, io, yml_path);
+                defer reader.deinit();
+                return self.loadReader(&reader);
+            } else {
+                const io: Io = .{};
+                var reader: FileReader = try .init(self.allocator, io, yml_path);
+                defer reader.deinit();
+                return self.loadReader(&reader);
+            }
         }
 
         pub fn loadRaw(self: *Self, raw: []const u8) !Destination {
@@ -421,8 +470,8 @@ pub fn Ymlz(comptime Destination: type) type {
 
         fn isArrayEntryOnlyChar(raw_line: []const u8) bool {
             // Trim whitespace to see if this is only the array start char
-            var trimmed_line = std.mem.trimLeft(u8, raw_line, " ");
-            trimmed_line = std.mem.trimRight(u8, trimmed_line, " ");
+            var trimmed_line = trimStart(u8, raw_line, " ");
+            trimmed_line = trimEnd(u8, trimmed_line, " ");
             return std.mem.eql(u8, trimmed_line, "-");
         }
 
@@ -641,6 +690,11 @@ test {
     _ = @import("tests.zig");
 }
 
+const testing_io: Io = if (isZig0_16)
+    std.testing.io
+else
+    .{};
+
 test "should be able to parse simple types" {
     const Subject = struct {
         first: i32,
@@ -649,9 +703,10 @@ test "should be able to parse simple types" {
         fourth: f32,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/super_simple.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -674,9 +729,10 @@ test "should be able to parse array types" {
         foods: [][]const u8,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/super_simple.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -709,9 +765,10 @@ test "should be able to parse deeps/recursive structs" {
         },
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/super_simple.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -738,9 +795,10 @@ test "should be able to parse booleans in all its forms" {
         eighth: bool,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/booleans.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -764,9 +822,10 @@ test "should be able to parse multiline" {
         second_multiline: []const u8,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/multilines.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -789,9 +848,10 @@ test "should be able to ignore single quotes and double quotes" {
         three: []const u8,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/quotes.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -826,9 +886,10 @@ test "should be able to parse arrays of T" {
         tutorial: []Tutorial,
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/tutorial.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -925,9 +986,10 @@ test "should be able to parse arrays and arrays in arrays" {
         shaders: []Shader,
     };
 
-    const yml_path = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_path = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/shader.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_path);
 
@@ -968,9 +1030,10 @@ test "should be able to to skip optional fields if non-existent in the parsed fi
         },
     };
 
-    const yml_file_location = try std.fs.cwd().realpathAlloc(
-        std.testing.allocator,
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
         "./resources/super_simple_with_optional.yml",
+        std.testing.allocator,
     );
     defer std.testing.allocator.free(yml_file_location);
 
@@ -1006,7 +1069,11 @@ test "should handle optional for new array index" {
             extra_information: ?[]const u8,
         },
     };
-    const yml_file_location = try std.fs.cwd().realpathAlloc(std.testing.allocator, "./resources/optional_array.yml");
+    const yml_file_location = try Dir.cwd().realPathFileAlloc(
+        testing_io,
+        "./resources/optional_array.yml",
+        std.testing.allocator,
+    );
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);

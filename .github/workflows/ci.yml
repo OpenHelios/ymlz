@@ -16,7 +16,7 @@ jobs:
           #- "0.14.1" fails with current version
           - "0.15.1"
           - "0.15.2"
-          #- "0.16.0" fails with current version
+          - "0.16.0"
     name: Build & Test (Zig ${{ matrix.zig-version }})
     runs-on: ubuntu-latest
     steps:
