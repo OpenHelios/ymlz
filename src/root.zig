@@ -1,7 +1,7 @@
 const std = @import("std");
-const constants = @import("./constants.zig");
+const constants = @import("constants.zig");
 
-const Suspense = @import("./Suspense.zig");
+const Suspense = @import("Suspense.zig");
 
 const Allocator = std.mem.Allocator;
 const AnyReader = std.io.AnyReader;
