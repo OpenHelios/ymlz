@@ -248,6 +248,11 @@ pub fn Ymlz(comptime Destination: type) type {
             return trimLeadingSpaces(splitted.next());
         }
 
+        const FieldNameType = struct {
+            name: []const u8,
+            type: type,
+        };
+
         fn parse(self: *Self, reader: anytype, comptime T: type, depth: usize) !T {
             var destination: T = undefined;
             const destination_reflaction = @typeInfo(@TypeOf(destination));
@@ -292,7 +297,7 @@ pub fn Ymlz(comptime Destination: type) type {
                             actual_type_info,
                             reader,
                             &destination,
-                            field,
+                            .{ .name = field.name, .type = field.type },
                             raw_line,
                             depth,
                         );
@@ -321,7 +326,7 @@ pub fn Ymlz(comptime Destination: type) type {
             actual_type_info: std.builtin.Type,
             reader: anytype,
             destination: anytype,
-            field: std.builtin.Type.StructField,
+            field: FieldNameType,
             raw_line: []const u8,
             depth: usize,
         ) !void {
