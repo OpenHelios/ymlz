@@ -37,7 +37,7 @@ test "Multiple elements in yaml file" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Elements).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     // Ensure both elements are parsed as expected and we have 2
@@ -89,7 +89,7 @@ test "98YD with bools" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.elements[0];
@@ -126,7 +126,7 @@ test "98YD" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.elements[0];
@@ -160,7 +160,7 @@ test "CC74" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.elements[0];
@@ -193,7 +193,7 @@ test "F6MC" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.elements[0];
@@ -225,7 +225,7 @@ test "QT73" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.elements[0];
@@ -252,7 +252,7 @@ test "trailing empty lines" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(SpecYaml).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     const element = result.nodes;
@@ -272,7 +272,7 @@ test "internal empty lines" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.value == 1);

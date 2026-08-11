@@ -161,16 +161,14 @@ pub fn Ymlz(comptime Destination: type) type {
         /// Uses absolute path for the yml file path. Can be used in conjunction
         /// such as `std.io.Dir.cwd()` in order to create relative paths.
         /// See Github README for example.
-        pub fn loadFile(self: *Self, yml_path: []const u8) !Destination {
+        pub fn loadFile(self: *Self, io: Io, yml_path: []const u8) !Destination {
             if (isZig0_16) {
-                var threaded: std.Io.Threaded = .init_single_threaded;
-                const io = threaded.io();
                 var reader: FileReader = try .init(self.allocator, io, yml_path);
                 defer reader.deinit();
                 return self.loadReader(&reader);
             } else {
-                const io: Io = .{};
-                var reader: FileReader = try .init(self.allocator, io, yml_path);
+                const _io: Io = .{};
+                var reader: FileReader = try .init(self.allocator, _io, yml_path);
                 defer reader.deinit();
                 return self.loadReader(&reader);
             }
@@ -711,7 +709,7 @@ test "should be able to parse simple types" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.first == 500);
@@ -737,7 +735,7 @@ test "should be able to parse array types" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.foods.len == 4);
@@ -773,7 +771,7 @@ test "should be able to parse deeps/recursive structs" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.inner.sd == 12);
@@ -803,7 +801,7 @@ test "should be able to parse booleans in all its forms" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.first == true);
@@ -830,7 +828,7 @@ test "should be able to parse multiline" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(std.mem.containsAtLeast(u8, result.multiline, 1, "asdoksad\n"));
@@ -856,7 +854,7 @@ test "should be able to ignore single quotes and double quotes" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(std.mem.containsAtLeast(u8, result.one, 1, "testing without quotes"));
@@ -894,7 +892,7 @@ test "should be able to parse arrays of T" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(std.mem.eql(u8, result.name, "Martin D'vloper"));
@@ -994,7 +992,7 @@ test "should be able to parse arrays and arrays in arrays" {
     defer std.testing.allocator.free(yml_path);
 
     var ymlz = try Ymlz(Experiment).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_path);
+    const result = try ymlz.loadFile(testing_io, yml_path);
     defer ymlz.deinit(result);
 
     try expect(std.mem.eql(u8, result.shaders[0].programs[0].fs.uniform_blocks[0].uniforms[0].name, "u_color_override"));
@@ -1038,7 +1036,7 @@ test "should be able to to skip optional fields if non-existent in the parsed fi
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.first == 500);
@@ -1077,7 +1075,7 @@ test "should handle optional for new array index" {
     defer std.testing.allocator.free(yml_file_location);
 
     var ymlz = try Ymlz(Subject).init(std.testing.allocator);
-    const result = try ymlz.loadFile(yml_file_location);
+    const result = try ymlz.loadFile(testing_io, yml_file_location);
     defer ymlz.deinit(result);
 
     try expect(result.products.len == 3);
