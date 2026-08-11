@@ -3,6 +3,8 @@ const constants = @import("constants.zig");
 
 const Suspense = @import("Suspense.zig");
 
+const isZig0_17 = @import("compat/compat.zig").isZig0_17;
+
 const Allocator = std.mem.Allocator;
 
 const Dir = std.Io.Dir;
@@ -156,47 +158,93 @@ pub fn Ymlz(comptime Destination: type) type {
             if (destination_reflaction == .@"struct") {
                 const struct_info = destination_reflaction.@"struct";
 
-                inline for (struct_info.fields) |field| {
-                    const typeInfo = @typeInfo(field.type);
-                    const actualTypeInfo = if (typeInfo == .optional) @typeInfo(typeInfo.optional.child) else typeInfo;
+                if (isZig0_17) {
+                    inline for (struct_info.field_names, struct_info.field_types) |field_name, field_type| {
+                        const typeInfo = @typeInfo(field_type);
+                        const actualTypeInfo = if (typeInfo == .optional) @typeInfo(typeInfo.optional.child) else typeInfo;
 
-                    switch (actualTypeInfo) {
-                        .pointer => {
-                            if (actualTypeInfo.pointer.size == .slice and actualTypeInfo.pointer.child != u8) {
-                                const child_type_info = @typeInfo(actualTypeInfo.pointer.child);
+                        switch (actualTypeInfo) {
+                            .pointer => {
+                                if (actualTypeInfo.pointer.size == .slice and actualTypeInfo.pointer.child != u8) {
+                                    const child_type_info = @typeInfo(actualTypeInfo.pointer.child);
 
-                                if (actualTypeInfo.pointer.size == .slice and child_type_info == .@"struct") {
-                                    const inner = @field(st, field.name);
+                                    if (actualTypeInfo.pointer.size == .slice and child_type_info == .@"struct") {
+                                        const inner = @field(st, field_name);
 
-                                    if (typeInfo == .optional) {
-                                        if (inner) |n| {
-                                            for (n) |inner_st| {
+                                        if (typeInfo == .optional) {
+                                            if (inner) |n| {
+                                                for (n) |inner_st| {
+                                                    self.deinitRecursively(inner_st, depth + 1);
+                                                }
+                                            }
+                                        } else {
+                                            for (inner) |inner_st| {
                                                 self.deinitRecursively(inner_st, depth + 1);
                                             }
                                         }
+                                    }
+
+                                    const container = @field(st, field_name);
+
+                                    if (typeInfo == .optional) {
+                                        if (container) |c| {
+                                            self.allocator.free(c);
+                                        }
                                     } else {
-                                        for (inner) |inner_st| {
-                                            self.deinitRecursively(inner_st, depth + 1);
+                                        self.allocator.free(container);
+                                    }
+                                }
+                            },
+                            .@"struct" => {
+                                const inner = @field(st, field_name);
+                                self.deinitRecursively(inner, depth + 1);
+                            },
+                            else => continue,
+                        }
+                    }
+                } else {
+                    inline for (struct_info.fields) |field| {
+                        const typeInfo = @typeInfo(field.type);
+                        const actualTypeInfo = if (typeInfo == .optional) @typeInfo(typeInfo.optional.child) else typeInfo;
+
+                        switch (actualTypeInfo) {
+                            .pointer => {
+                                if (actualTypeInfo.pointer.size == .slice and actualTypeInfo.pointer.child != u8) {
+                                    const child_type_info = @typeInfo(actualTypeInfo.pointer.child);
+
+                                    if (actualTypeInfo.pointer.size == .slice and child_type_info == .@"struct") {
+                                        const inner = @field(st, field.name);
+
+                                        if (typeInfo == .optional) {
+                                            if (inner) |n| {
+                                                for (n) |inner_st| {
+                                                    self.deinitRecursively(inner_st, depth + 1);
+                                                }
+                                            }
+                                        } else {
+                                            for (inner) |inner_st| {
+                                                self.deinitRecursively(inner_st, depth + 1);
+                                            }
                                         }
                                     }
-                                }
 
-                                const container = @field(st, field.name);
+                                    const container = @field(st, field.name);
 
-                                if (typeInfo == .optional) {
-                                    if (container) |c| {
-                                        self.allocator.free(c);
+                                    if (typeInfo == .optional) {
+                                        if (container) |c| {
+                                            self.allocator.free(c);
+                                        }
+                                    } else {
+                                        self.allocator.free(container);
                                     }
-                                } else {
-                                    self.allocator.free(container);
                                 }
-                            }
-                        },
-                        .@"struct" => {
-                            const inner = @field(st, field.name);
-                            self.deinitRecursively(inner, depth + 1);
-                        },
-                        else => continue,
+                            },
+                            .@"struct" => {
+                                const inner = @field(st, field.name);
+                                self.deinitRecursively(inner, depth + 1);
+                            },
+                            else => continue,
+                        }
                     }
                 }
             }
@@ -258,63 +306,125 @@ pub fn Ymlz(comptime Destination: type) type {
             const destination_reflaction = @typeInfo(@TypeOf(destination));
             var totalFieldsParsed: usize = 0;
 
-            // Make sure nullify all optional fields first
-            const struct_info = destination_reflaction.@"struct";
-            inline for (struct_info.fields) |field| {
-                if (@typeInfo(field.type) == .optional) {
-                    @field(destination, field.name) = null;
-                }
-            }
-
-            while (totalFieldsParsed < struct_info.fields.len) {
-                const raw_line = try self.readLine(reader) orelse {
-                    break;
-                };
-
-                if (raw_line.len == 0) {
-                    continue;
+            if (isZig0_17) {
+                // Make sure nullify all optional fields first
+                const struct_info = destination_reflaction.@"struct";
+                inline for (struct_info.field_names, struct_info.field_types) |field_name, field_type| {
+                    if (@typeInfo(field_type) == .optional) {
+                        @field(destination, field_name) = null;
+                    }
                 }
 
-                if (totalFieldsParsed != 0 and newArrrayIndexPresent(raw_line)) {
-                    try self.suspense.set(raw_line);
-                    break;
-                }
+                while (totalFieldsParsed < struct_info.field_names.len) {
+                    const raw_line = try self.readLine(reader) orelse {
+                        break;
+                    };
 
-                const field_name = getFieldName(raw_line, depth) orelse {
-                    @panic(("Failed to get field name from yml file."));
-                };
-
-                var is_field_parsed = false;
-
-                inline for (struct_info.fields, 0..) |field, index| {
-                    const type_info = @typeInfo(field.type);
-                    const is_optional_field = type_info == .optional;
-
-                    if (std.mem.eql(u8, field.name, field_name)) {
-                        const actual_type_info = if (is_optional_field) @typeInfo(type_info.optional.child) else type_info;
-
-                        try self.parseField(
-                            actual_type_info,
-                            reader,
-                            &destination,
-                            .{ .name = field.name, .type = field.type },
-                            raw_line,
-                            depth,
-                        );
-
-                        is_field_parsed = true;
+                    if (raw_line.len == 0) {
+                        continue;
                     }
 
-                    if (index == struct_info.fields.len - 1 and !is_field_parsed and is_optional_field) {
-                        is_field_parsed = true;
+                    if (totalFieldsParsed != 0 and newArrrayIndexPresent(raw_line)) {
                         try self.suspense.set(raw_line);
+                        break;
+                    }
+
+                    const field_name = getFieldName(raw_line, depth) orelse {
+                        @panic(("Failed to get field name from yml file."));
+                    };
+
+                    var is_field_parsed = false;
+
+                    inline for (struct_info.field_names, struct_info.field_types, 0..) |current_name, current_type, index| {
+                        const type_info = @typeInfo(current_type);
+                        const is_optional_field = type_info == .optional;
+
+                        if (std.mem.eql(u8, current_name, field_name)) {
+                            const actual_type_info = if (is_optional_field) @typeInfo(type_info.optional.child) else type_info;
+
+                            try self.parseField(
+                                actual_type_info,
+                                reader,
+                                &destination,
+                                .{ .name = current_name, .type = current_type },
+                                raw_line,
+                                depth,
+                            );
+
+                            is_field_parsed = true;
+                        }
+
+                        if (index == struct_info.field_names.len - 1 and !is_field_parsed and is_optional_field) {
+                            is_field_parsed = true;
+                            try self.suspense.set(raw_line);
+                        }
+                    }
+
+                    if (!is_field_parsed) {
+                        @panic("No such field in given yml file.");
+                    } else {
+                        totalFieldsParsed += 1;
+                    }
+                }
+            } else {
+                // Make sure nullify all optional fields first
+                const struct_info = destination_reflaction.@"struct";
+                inline for (struct_info.fields) |field| {
+                    if (@typeInfo(field.type) == .optional) {
+                        @field(destination, field.name) = null;
                     }
                 }
 
-                if (!is_field_parsed) {
-                    @panic("No such field in given yml file.");
-                } else {
-                    totalFieldsParsed += 1;
+                while (totalFieldsParsed < struct_info.fields.len) {
+                    const raw_line = try self.readLine(reader) orelse {
+                        break;
+                    };
+
+                    if (raw_line.len == 0) {
+                        continue;
+                    }
+
+                    if (totalFieldsParsed != 0 and newArrrayIndexPresent(raw_line)) {
+                        try self.suspense.set(raw_line);
+                        break;
+                    }
+
+                    const field_name = getFieldName(raw_line, depth) orelse {
+                        @panic(("Failed to get field name from yml file."));
+                    };
+
+                    var is_field_parsed = false;
+
+                    inline for (struct_info.fields, 0..) |field, index| {
+                        const type_info = @typeInfo(field.type);
+                        const is_optional_field = type_info == .optional;
+
+                        if (std.mem.eql(u8, field.name, field_name)) {
+                            const actual_type_info = if (is_optional_field) @typeInfo(type_info.optional.child) else type_info;
+
+                            try self.parseField(
+                                actual_type_info,
+                                reader,
+                                &destination,
+                                .{ .name = field.name, .type = field.type },
+                                raw_line,
+                                depth,
+                            );
+
+                            is_field_parsed = true;
+                        }
+
+                        if (index == struct_info.fields.len - 1 and !is_field_parsed and is_optional_field) {
+                            is_field_parsed = true;
+                            try self.suspense.set(raw_line);
+                        }
+                    }
+
+                    if (!is_field_parsed) {
+                        @panic("No such field in given yml file.");
+                    } else {
+                        totalFieldsParsed += 1;
+                    }
                 }
             }
 
