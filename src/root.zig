@@ -154,7 +154,9 @@ pub fn Ymlz(comptime Destination: type) type {
             const destination_reflaction = @typeInfo(@TypeOf(st));
 
             if (destination_reflaction == .@"struct") {
-                inline for (destination_reflaction.@"struct".fields) |field| {
+                const struct_info = destination_reflaction.@"struct";
+
+                inline for (struct_info.fields) |field| {
                     const typeInfo = @typeInfo(field.type);
                     const actualTypeInfo = if (typeInfo == .optional) @typeInfo(typeInfo.optional.child) else typeInfo;
 
@@ -252,13 +254,14 @@ pub fn Ymlz(comptime Destination: type) type {
             var totalFieldsParsed: usize = 0;
 
             // Make sure nullify all optional fields first
-            inline for (destination_reflaction.@"struct".fields) |field| {
+            const struct_info = destination_reflaction.@"struct";
+            inline for (struct_info.fields) |field| {
                 if (@typeInfo(field.type) == .optional) {
                     @field(destination, field.name) = null;
                 }
             }
 
-            while (totalFieldsParsed < destination_reflaction.@"struct".fields.len) {
+            while (totalFieldsParsed < struct_info.fields.len) {
                 const raw_line = try self.readLine(reader) orelse {
                     break;
                 };
@@ -278,7 +281,7 @@ pub fn Ymlz(comptime Destination: type) type {
 
                 var is_field_parsed = false;
 
-                inline for (destination_reflaction.@"struct".fields, 0..) |field, index| {
+                inline for (struct_info.fields, 0..) |field, index| {
                     const type_info = @typeInfo(field.type);
                     const is_optional_field = type_info == .optional;
 
@@ -297,7 +300,7 @@ pub fn Ymlz(comptime Destination: type) type {
                         is_field_parsed = true;
                     }
 
-                    if (index == destination_reflaction.@"struct".fields.len - 1 and !is_field_parsed and is_optional_field) {
+                    if (index == struct_info.fields.len - 1 and !is_field_parsed and is_optional_field) {
                         is_field_parsed = true;
                         try self.suspense.set(raw_line);
                     }
