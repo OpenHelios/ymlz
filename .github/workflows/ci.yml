@@ -27,4 +27,4 @@ jobs:
           tar xf zig-x86_64-linux-${{ matrix.zig-version }}.tar.xz
           echo "$GITHUB_WORKSPACE/zig-x86_64-linux-${{ matrix.zig-version }}" >> "$GITHUB_PATH"
       - name: Build & Test
-        run: zig build test
+        run: zig build test run
