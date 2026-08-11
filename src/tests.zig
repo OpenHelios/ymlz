@@ -4,20 +4,9 @@ const expect = std.testing.expect;
 
 const Ymlz = @import("root.zig").Ymlz;
 
-const compat = @import("compat/compat.zig");
-const isZig0_16 = compat.isZig0_16;
-const Dir = if (isZig0_16)
-    std.Io.Dir
-else
-    compat.Io.Dir;
-const Io = if (isZig0_16)
-    std.Io
-else
-    compat.Io;
-const io: Io = if (isZig0_16)
-    std.testing.io
-else
-    .{};
+const Dir = std.Io.Dir;
+const Io = std.Io;
+const io: Io = std.testing.io;
 
 test "Multiple elements in yaml file" {
     const Element = struct {

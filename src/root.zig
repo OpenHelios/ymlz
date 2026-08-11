@@ -5,32 +5,12 @@ const Suspense = @import("Suspense.zig");
 
 const Allocator = std.mem.Allocator;
 
-const compat = @import("compat/compat.zig");
-const isZig0_16 = compat.isZig0_16;
-const Dir = if (isZig0_16)
-    std.Io.Dir
-else
-    compat.Io.Dir;
-const File = if (isZig0_16)
-    std.Io.File
-else
-    std.fs.File;
-const Io = if (isZig0_16)
-    std.Io
-else
-    compat.Io;
-const Writer = if (isZig0_16)
-    std.Io.Writer
-else
-    std.io.Writer;
-const trimStart = if (isZig0_16)
-    std.mem.trimStart
-else
-    std.mem.trimLeft;
-const trimEnd = if (isZig0_16)
-    std.mem.trimEnd
-else
-    std.mem.trimRight;
+const Dir = std.Io.Dir;
+const File = std.Io.File;
+const Io = std.Io;
+const Writer = std.Io.Writer;
+const trimStart = std.mem.trimStart;
+const trimEnd = std.mem.trimEnd;
 
 const expect = std.testing.expect;
 
@@ -69,11 +49,7 @@ const FileReader = struct {
 
     pub fn init(allocator: Allocator, io: Io, yml_path: []const u8) !Self {
         const file = try Dir.openFileAbsolute(io, yml_path, .{ .mode = .read_only });
-        if (isZig0_16) {
-            errdefer file.close(io);
-        } else {
-            errdefer file.close();
-        }
+        errdefer file.close(io);
         const buffer = try allocator.alloc(u8, 4096);
         errdefer allocator.free(buffer);
         return .{
@@ -81,20 +57,13 @@ const FileReader = struct {
             .io = io,
             .file = file,
             .buffer = buffer,
-            .reader = if (isZig0_16)
-                file.reader(io, buffer)
-            else
-                file.reader(buffer),
+            .reader = file.reader(io, buffer),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.allocator.free(self.buffer);
-        if (isZig0_16) {
-            self.file.close(self.io);
-        } else {
-            self.file.close();
-        }
+        self.file.close(self.io);
     }
 
     pub fn readLine(
@@ -162,16 +131,9 @@ pub fn Ymlz(comptime Destination: type) type {
         /// such as `std.io.Dir.cwd()` in order to create relative paths.
         /// See Github README for example.
         pub fn loadFile(self: *Self, io: Io, yml_path: []const u8) !Destination {
-            if (isZig0_16) {
-                var reader: FileReader = try .init(self.allocator, io, yml_path);
-                defer reader.deinit();
-                return self.loadReader(&reader);
-            } else {
-                const _io: Io = .{};
-                var reader: FileReader = try .init(self.allocator, _io, yml_path);
-                defer reader.deinit();
-                return self.loadReader(&reader);
-            }
+            var reader: FileReader = try .init(self.allocator, io, yml_path);
+            defer reader.deinit();
+            return self.loadReader(&reader);
         }
 
         pub fn loadRaw(self: *Self, raw: []const u8) !Destination {
@@ -688,10 +650,7 @@ test {
     _ = @import("tests.zig");
 }
 
-const testing_io: Io = if (isZig0_16)
-    std.testing.io
-else
-    .{};
+const testing_io: Io = std.testing.io;
 
 test "should be able to parse simple types" {
     const Subject = struct {
